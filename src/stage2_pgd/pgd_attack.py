@@ -45,8 +45,15 @@ def pgd_step(model, prefix_embeds, adv_embeds, target_embeds, target_ids, step_s
     full_embeds = torch.cat([prefix_embeds, adv, target_embeds[:, :-1, :]], dim=1)
     n_prefix_adv = prefix_embeds.shape[1] + adv.shape[1]
 
+    # HF shifts internally (logits[j] is paired with labels[j+1]), so labels
+    # need to hold the token actually embedded at each position, not the next
+    # one -- that's target_ids[:-1] here, since the embedded slice is
+    # target_embeds[:-1]. Predicting the next token from a given position's
+    # context then correctly lands on target_ids[k] for the token embedded
+    # at position k. Getting this backwards (target_ids[1:]) silently trains
+    # the attack toward the wrong token at every position.
     labels = torch.full((1, full_embeds.shape[1]), -100, dtype=torch.long)
-    labels[0, n_prefix_adv:] = target_ids[0, 1:]
+    labels[0, n_prefix_adv:] = target_ids[0, :-1]
 
     out = model(inputs_embeds=full_embeds, labels=labels)
     loss = out.loss
