@@ -26,6 +26,12 @@ EPSILON = 0.3
 def nearest_tokens(model, tokenizer, embeds):
     embed_matrix = model.get_input_embeddings().weight
     dists = torch.cdist(embeds[0].float(), embed_matrix.float())
+    # Special tokens (im_start, endoftext, ...) can be the closest vocab
+    # neighbor to a random optimized vector without meaning anything as text,
+    # and landing on one mid-string can break chat-template parsing on the
+    # follow-up generation call -- so they're excluded as candidates.
+    if tokenizer.all_special_ids:
+        dists[:, tokenizer.all_special_ids] = float("inf")
     nearest_ids = dists.argmin(dim=-1)
     return tokenizer.decode(nearest_ids)
 
