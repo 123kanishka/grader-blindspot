@@ -1,3 +1,4 @@
+import gc
 import json
 
 import torch
@@ -46,6 +47,7 @@ def main():
     base_model, tokenizer = load_model_and_tokenizer()
     base_records = evaluate(base_model, tokenizer, items, "base")
     del base_model
+    gc.collect()  # only ~4.5GB RAM to work with, can't hold both checkpoints at once
 
     lora_model, tokenizer = load_model_and_tokenizer(adapter_path=str(LORA_DIR))
     lora_records = evaluate(lora_model, tokenizer, items, "lora_finetuned")
